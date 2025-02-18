@@ -1,39 +1,38 @@
 import pandas as pd
 
 # Load the Excel file
-file_path = "D:\C_DRIVE DATA\DESKTOP\Spring Schedule 2025.xlsx"
-df = pd.read_excel(file_path)
+file_path = "Spring Schedule 2025.xlsx"
+df = pd.read_excel(file_path, sheet_name=None)  # Load all sheets
 
-# Define a function to determine the day dynamically
-def detect_day(column):
-    if "Mon" in column["Monday / Wednesday"] or "Wed" in column["Monday / Wednesday"]:
-        return "M/W"
-    elif "Tue" in column["Tuesday / Thursday"] or "Thu" in column["Tuesday / Thursday"]:
-        return "T/Th"
-    elif "Fri" in column["Friday / Saturday"] or "Sat" in column["Friday / Saturday"]:
-        return "F/S"
-    else:
-        return "Unknown"
+# Define the mapping for days
+day_mapping = {
+    "Monday / Wednesday": "M/W",
+    "Tuesday / Thursday": "T/Th",
+    "Friday / Saturday": "F/S"
+}
 
-# Assuming there's a column that contains day information, update its name accordingly
-df = df.rename(columns={
-    "Timings": "Time",
-    "Course Name": "Course Name",
-    "Class & Program": "Program",
-    "UMS ClassNo.": "Class Code",
-    "Teacher": "Teacher"
-})
+# Process each sheet and convert it into a standard format
+final_df = pd.DataFrame()
 
-# Create a new "Day" column using the function
-df["Day"] = df.apply(detect_day, axis=1)
+for sheet, data in df.items():
+    # Rename columns to match standard format
+    data = data.rename(columns={
+        "Course Name": "Course Name",
+        "Class & Program": "Program",
+        "UMS ClassNo.": "Class Code",
+        "Timings": "Time",
+        "Teacher": "Teacher"
+    })
 
-# Select and reorder required columns
-df = df[["Course Name", "Program", "Class Code", "Day", "Time", "Teacher"]]
+    # Assign the correct day based on the sheet name
+    data["Day"] = day_mapping.get(sheet, "Unknown")
 
-# Save the formatted dataset
-df.to_excel("formatted_timetable.xlsx", index=False)
+    # Keep only relevant columns
+    data = data[["Course Name", "Program", "Class Code", "Day", "Time", "Teacher"]]
 
-print("Dataset successfully converted and saved as 'formatted_timetable.xlsx'.")
+    # Append to final dataframe
+    final_df = pd.concat([final_df, data], ignore_index=True)
 
-
-#
+# Save the formatted data
+final_df.to_excel("Formatted_Schedule.xlsx", index=False)
+print("File has been formatted and saved as 'Formatted_Schedule.xlsx'.")
