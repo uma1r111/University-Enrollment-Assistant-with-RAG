@@ -2,37 +2,51 @@ import pandas as pd
 
 # Load the Excel file
 file_path = "Spring Schedule 2025.xlsx"
-df = pd.read_excel(file_path, sheet_name=None)  # Load all sheets
+xls = pd.ExcelFile(file_path)
 
-# Define the mapping for days
-day_mapping = {
-    "Monday / Wednesday": "M/W",
-    "Tuesday / Thursday": "T/Th",
-    "Friday / Saturday": "F/S"
-}
+# Read the main schedule sheet (adjust the sheet name if necessary)
+df = xls.parse("Undergrad Schedule Spring 2025-")
 
-# Process each sheet and convert it into a standard format
-final_df = pd.DataFrame()
+# Drop initial metadata rows (assuming first 5 rows are headers or irrelevant)
+df = df.iloc[5:].reset_index(drop=True)
 
-for sheet, data in df.items():
-    # Rename columns to match standard format
-    data = data.rename(columns={
-        "Course Name": "Course Name",
-        "Class & Program": "Program",
-        "UMS ClassNo.": "Class Code",
-        "Timings": "Time",
-        "Teacher": "Teacher"
-    })
+# Load first sheet with correct header row (adjust header index if needed)
+df = pd.read_excel(file_path, sheet_name=0, header=2)  # Use header=1 or header=2 based on actual data
 
-    # Assign the correct day based on the sheet name
-    data["Day"] = day_mapping.get(sheet, "Unknown")
+# Rename columns based on observed structure
+df.columns = [
+    "Timings", "Monday/Wednesday", "MW_Course", "MW_Code", "MW_Teacher", "Extra1", 
+    "Tuesday/Thursday", "TT_Course", "TT_Code", "TT_Teacher", "Extra2", 
+    "Friday/Saturday", "FS_Course", "FS_Code", "FS_Teacher", "Extra3", "code"
+]
 
-    # Keep only relevant columns
-    data = data[["Course Name", "Program", "Class Code", "Day", "Time", "Teacher"]]
+# Select only relevant columns
+df = df[["Timings", "MW_Course", "MW_Code", "MW_Teacher", "TT_Course", "TT_Code", "TT_Teacher", "FS_Course", "FS_Code", "FS_Teacher"]]
 
-    # Append to final dataframe
-    final_df = pd.concat([final_df, data], ignore_index=True)
+# Reshape data to long format
+mw = df[["Timings", "MW_Course", "MW_Code", "MW_Teacher"]].dropna()
+mw["Day"] = "M/W"
+mw.columns = ["Time", "Course Name", "Class Code", "Teacher", "Day"]
 
-# Save the formatted data
-final_df.to_excel("Formatted_Schedule.xlsx", index=False)
-print("File has been formatted and saved as 'Formatted_Schedule.xlsx'.")
+tt = df[["Timings", "TT_Course", "TT_Code", "TT_Teacher"]].dropna()
+tt["Day"] = "T/Th"
+tt.columns = ["Time", "Course Name", "Class Code", "Teacher", "Day"]
+
+fs = df[["Timings", "FS_Course", "FS_Code", "FS_Teacher"]].dropna()
+fs["Day"] = "F/S"
+fs.columns = ["Time", "Course Name", "Class Code", "Teacher", "Day"]
+
+# Combine all days into a single DataFrame
+final_df = pd.concat([mw, tt, fs], ignore_index=True)
+
+# Add a placeholder 'Program' column (update if program info is available)
+final_df["Program"] = "BSCS-8"  # Change this if different programs exist
+
+# Reorder columns
+final_df = final_df[["Course Name", "Program", "Class Code", "Day", "Time", "Teacher"]]
+
+# Save to a new Excel file
+output_file = "Formatted_Schedule.xlsx"
+final_df.to_excel(output_file, index=False)
+
+print(f"Formatted schedule saved to: {output_file}")
