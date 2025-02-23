@@ -1,52 +1,83 @@
 import pandas as pd
 
 # Load the Excel file
-file_path = "Spring Schedule 2025.xlsx"
-xls = pd.ExcelFile(file_path)
+file_path = 'Spring Schedule 2025(1).xlsx'
+sheet_name = 'Sheet1'
 
-# Read the main schedule sheet (adjust the sheet name if necessary)
-df = xls.parse("Undergrad Schedule Spring 2025-")
+# Read the Excel file and inspect the columns
+df = pd.read_excel(file_path, sheet_name=sheet_name, header=[1])  # Assuming the second row is the header
 
-# Drop initial metadata rows (assuming first 5 rows are headers or irrelevant)
-df = df.iloc[5:].reset_index(drop=True)
+# Print the column names to verify
+print("Column Names:", df.columns.tolist())
 
-# Load first sheet with correct header row (adjust header index if needed)
-df = pd.read_excel(file_path, sheet_name=0, header=2)  # Use header=1 or header=2 based on actual data
+# Initialize an empty list to store the transformed data
+transformed_data = []
 
-# Rename columns based on observed structure
-df.columns = [
-    "Timings", "Monday/Wednesday", "MW_Course", "MW_Code", "MW_Teacher", "Extra1", 
-    "Tuesday/Thursday", "TT_Course", "TT_Code", "TT_Teacher", "Extra2", 
-    "Friday/Saturday", "FS_Course", "FS_Code", "FS_Teacher", "Extra3", "code"
-]
+# Iterate through each row in the DataFrame
+for index, row in df.iterrows():
+    timings = row['Unnamed: 0']  # Time is in column A, which is labeled as 'Unnamed: 0'
+    
+    # Monday / Wednesday
+    if pd.notna(row['Course Name']):
+        transformed_data.append({
+            'Course Name': row['Course Name'],
+            'Program': row['Class & Program'],
+            'Class Code': row[' UMS ClassNo.'],  # Note the leading space
+            'Day': 'Monday',
+            'Time': timings,
+            'Teacher': row['Teacher']
+        })
+        transformed_data.append({
+            'Course Name': row['Course Name'],
+            'Program': row['Class & Program'],
+            'Class Code': row[' UMS ClassNo.'],  # Note the leading space
+            'Day': 'Wednesday',
+            'Time': timings,
+            'Teacher': row['Teacher']
+        })
+    
+    # Tuesday / Thursday
+    if pd.notna(row['Course Name.1']):
+        transformed_data.append({
+            'Course Name': row['Course Name.1'],
+            'Program': row['Class & Program.1'],
+            'Class Code': row[' UMS ClassNo..1'],  # Note the leading space
+            'Day': 'Tuesday',
+            'Time': timings,
+            'Teacher': row['Teacher.1']
+        })
+        transformed_data.append({
+            'Course Name': row['Course Name.1'],
+            'Program': row['Class & Program.1'],
+            'Class Code': row[' UMS ClassNo..1'],  # Note the leading space
+            'Day': 'Thursday',
+            'Time': timings,
+            'Teacher': row['Teacher.1']
+        })
+    
+    # Friday / Saturday
+    if pd.notna(row['Course Name.2']):
+        transformed_data.append({
+            'Course Name': row['Course Name.2'],
+            'Program': row['Class & Program.2'],
+            'Class Code': row[' UMS ClassNo..2'],  # Note the leading space
+            'Day': 'Friday',
+            'Time': timings,
+            'Teacher': row['Teacher.2']
+        })
+        transformed_data.append({
+            'Course Name': row['Course Name.2'],
+            'Program': row['Class & Program.2'],
+            'Class Code': row[' UMS ClassNo..2'],  # Note the leading space
+            'Day': 'Saturday',
+            'Time': timings,
+            'Teacher': row['Teacher.2']
+        })
 
-# Select only relevant columns
-df = df[["Timings", "MW_Course", "MW_Code", "MW_Teacher", "TT_Course", "TT_Code", "TT_Teacher", "FS_Course", "FS_Code", "FS_Teacher"]]
+# Convert the list to a DataFrame
+transformed_df = pd.DataFrame(transformed_data)
 
-# Reshape data to long format
-mw = df[["Timings", "MW_Course", "MW_Code", "MW_Teacher"]].dropna()
-mw["Day"] = "M/W"
-mw.columns = ["Time", "Course Name", "Class Code", "Teacher", "Day"]
+# Save the transformed data to a new Excel file
+transformed_df.to_excel('Transformed_Schedule.xlsx', index=False)
 
-tt = df[["Timings", "TT_Course", "TT_Code", "TT_Teacher"]].dropna()
-tt["Day"] = "T/Th"
-tt.columns = ["Time", "Course Name", "Class Code", "Teacher", "Day"]
-
-fs = df[["Timings", "FS_Course", "FS_Code", "FS_Teacher"]].dropna()
-fs["Day"] = "F/S"
-fs.columns = ["Time", "Course Name", "Class Code", "Teacher", "Day"]
-
-# Combine all days into a single DataFrame
-final_df = pd.concat([mw, tt, fs], ignore_index=True)
-
-# Add a placeholder 'Program' column (update if program info is available)
-final_df["Program"] = "BSCS-8"  # Change this if different programs exist
-
-# Reorder columns
-final_df = final_df[["Course Name", "Program", "Class Code", "Day", "Time", "Teacher"]]
-
-# Save to a new Excel file
-output_file = "Formatted_Schedule.xlsx"
-final_df.to_excel(output_file, index=False)
-
-print(f"Formatted schedule saved to: {output_file}")
+print("Data transformation complete. Saved to 'Transformed_Schedule.xlsx'")
